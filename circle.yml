@@ -1,0 +1,25 @@
+machine:
+  environment:
+    IMAGE_TAG: ${CIRCLE_SHA1}-${CIRCLE_BUILD_NUM}
+    COMPOSE_PROJECT_NAME: ${CIRCLE_BUILD_NUM}
+dependencies:
+  override:
+    - docker build -t bellkev/fantasticorp-home-uwsgi:$IMAGE_TAG uwsgi
+    - docker build -t bellkev/fantasticorp-home-nginx:$IMAGE_TAG nginx
+    - docker build -t fantasticorp-home-test test
+    - xxd -l 8 -p /dev/urandom > test_container_name
+test:
+  override:
+    - docker-compose up -d
+    - docker run --link ${COMPOSE_PROJECT_NAME}_nginx_1:nginx --name $(cat test_container_name) fantasticorp-home-test
+    - docker cp $(cat test_container_name):/nosetests.xml $CIRCLE_TEST_REPORTS
+    - docker-compose kill || true
+deployment:
+  staging:
+    branch: master
+    commands:
+      - docker login -u $DOCKER_USER -e $DOCKER_EMAIL -p $DOCKER_PASS
+      - docker push bellkev/fantasticorp-home-uwsgi:$IMAGE_TAG
+      - docker push bellkev/fantasticorp-home-nginx:$IMAGE_TAG
+      - script/update-trello.sh
+      - script/deploy.sh prod
