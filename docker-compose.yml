@@ -1,0 +1,8 @@
+uwsgi:
+  image: "/fantasticorp-home-uwsgi:${CIRCLE_SHA1}"
+nginx:
+  image: "/fantasticorp-home-nginx:${CIRCLE_SHA1}"
+  links:
+    - uwsgi
+  expose:
+    - 8000
